@@ -2,122 +2,102 @@ from torch.utils.data import DataLoader
 import torch
 import numpy as np
 from tensorboardX import SummaryWriter
+from Loss import *
 
 
-class ExperimentRunnerBase(object):
-    """
-    This base class contains the simple train and validation loops for your VQA experiments.
-    Anything specific to a particular experiment (Simple or Coattention) should go in the corresponding subclass.
-    """
+model = Net()
+num_epochs = num_epochs
+log_freq = 10  # Steps
+test_freq = 1000  # Steps
 
-    def __init__(self, train_dataset, val_dataset, model, batch_size, num_epochs, num_data_loader_workers=10, simple=True):
-        self.simple = simple
-        self._model = model
-        self._num_epochs = num_epochs
-        self._log_freq = 10  # Steps
-        self._test_freq = 1000  # Steps
+loss = MultiLossLayer()
 
-        self._train_dataset_loader = DataLoader(
-            train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_data_loader_workers)
+train_dataset_loader = DataLoader(
+    train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_data_loader_workers)
 
-        # If you want to, you can shuffle the validation dataset and only use a subset of it to speed up debugging
-        self._val_dataset_loader = DataLoader(
-            val_dataset, batch_size=batch_size, shuffle=False, num_workers=num_data_loader_workers)
+# If you want to, you can shuffle the validation dataset and only use a subset of it to speed up debugging
+val_dataset_loader = DataLoader(
+    val_dataset, batch_size=batch_size, shuffle=False, num_workers=num_data_loader_workers)
 
-        # Use the GPU if it's available.
-        self._cuda = torch.cuda.is_available()
+# Use the GPU if it's available.
+cuda = torch.cuda.is_available()
 
-        # if self._cuda:
-        self._model = self._model.cuda()
+if cuda:
+model = model.cuda()
 
-    # def _optimize(self, predicted_answers, true_answers):
-    #     """
-    #     This gets implemented in the subclasses. Don't implement this here.
-    #     """
-    #     raise NotImplementedError()
+optimizer = torch.optim.SGD(
+    'params': model.parameters(), lr=2.5e-4, momentum=0.9, weight_decay=1e-4)
 
-    def validate(self):
-        for batch_id, batch_data in enumerate(self._val_dataset_loader):
+
+def validate():
+    for batch_id, batch_data in enumerate(val_dataset_loader):
+        model.eval()
+        image_data = batch_data['image'].cuda()
+
+        segmented_out, depth_out = model(
+            image_data)
+
+        segmented_gt = batch_data['segmented_image'].cuda()
+        depth_gt = batch_data['depth_image'].cuda()
+
+        # Optimize the model according to the predictions
+        # loss = self._optimize(
+        #     predicted_answer, ground_truth_answer, train_flag=False)
+        seg_acc = segmentation_acc(segmented_out, segmented_gt)
+        depth_error = depth_error(depth_out, depth_gt)
+        acc_val = accuracy(
+            predicted_answer, ground_truth_answer, topk=(1,))
+    return seg_acc, depth_error
+
+
+def segmentation_acc(segmented_out, sgemented_gt):
+    correct_preds = (torch.eq(segmented_gt, segmented_out)).sum(dim=(1, 2))
+    correct_preds = correct_preds.numpy()/(gt.shape[1]*gt.shape[2])
+    acc = correct_preds.sum()/gt.shape[0]
+    acc = torch.Tensor(acc)
+    return acc
+
+
+def depth_error(depth_out, depth_gt):
+    rms_val = torch.sum(torch.Tensor((depth_out-depth_gt)**2), dim=(1, 2))
+    rms_val = out**0.5
+    error = out.numpy()/(gt.shape[1]*gt.shape[2])
+    error = torch.Tensor(error)
+    return error
+
+
+def train():
+    writer = SummaryWriter()
+    for epoch in range(num_epochs):
+        num_batches = len(train_dataset_loader)
+
+        for batch_id, batch_data in enumerate(train_dataset_loader):
+            model.train()  # Set the model to train mode
+            current_step = epoch * num_batches + batch_id
+
+            # ============
             image_data = batch_data['image'].cuda()
-            question_data = batch_data['question_onehot'].cuda()
 
-            predicted_answer = self._model(
-                image_data, question_data)
-            ground_truth_answer = batch_data['answer_index'][0].cuda()
-            # Optimize the model according to the predictions
-            loss = self._optimize(
-                predicted_answer, ground_truth_answer, train_flag=False)
-            acc_val = self.accuracy(
-                predicted_answer, ground_truth_answer, topk=(1,))
-        return acc_val, loss
+            segmented_out, depth_out = model(
+                image_data)
 
-    def accuracy(self, output, target, topk=(1)):
-        """Computes the accuracy over the k top predictions for the specified values of k"""
-        with torch.no_grad():
-            maxk = max(topk)
-            batch_size = target.size(0)
+            segmented_gt = batch_data['segmented_image'].cuda()
+            depth_gt = batch_data['depth_image'].cuda()
+            # ============
 
-            _, pred = output.topk(maxk, 1, True, True)
-            pred = pred.t()
-            correct = pred.eq(target.view(1, -1).expand_as(pred))
+            loss = optimize(
+                segmented_out, depth_out, segmenetd_gt, depth_gt, writer, current_step)
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            seg_acc = segmentation_acc(segmented_out, segmented_gt)
+            depth_error = depth_error(depth_out, depth_gt)
 
-            res = []
-            for k in topk:
-                correct_k = correct[:k].view(-1).float().sum(0, keepdim=True)
-                res.append(correct_k.mul_(100.0 / batch_size))
-            return res
+            if current_step % log_freq == 0:
+                print("Epoch: {}, Batch {}/{} has loss {}".format(epoch,
+                                                                  batch_id, num_batches, loss))
 
-    def train(self):
-        writer = SummaryWriter()
-        for epoch in range(self._num_epochs):
-            num_batches = len(self._train_dataset_loader)
-
-            for batch_id, batch_data in enumerate(self._train_dataset_loader):
-                self._model.train()  # Set the model to train mode
-                current_step = epoch * num_batches + batch_id
-
-                # ============
-                # TODO: Run the model and get the ground truth answers that you'll pass to your optimizer
-                # This logic should be generic; not specific to either the Simple Baseline or CoAttention.
-                # if self._cuda else batch_data['image']
-                image_data = batch_data['image'].cuda()
-
-                if (self.simple == True):
-                    question_data = batch_data['question_onehot'].cuda()
-                else:
-                    question_data = batch_data['ques_embed'].cuda()
-
-                predicted_answer = self._model(
-                    image_data, question_data)
-                predicted_answer = predicted_answer.cuda()
-
-                ground_truth_answer = batch_data['answer_index'][0]
-                ground_truth_answer = ground_truth_answer.cuda()
-
-                # ============
-
-                # Optimize the model according to the predictions
-                loss = self._optimize(
-                    predicted_answer, ground_truth_answer, train_flag=True)
-
-                train_acc = self.accuracy(
-                    predicted_answer, ground_truth_answer, topk=(1,))
-
-                if current_step % self._log_freq == 0:
-                    print("Epoch: {}, Batch {}/{} has loss {}".format(epoch,
-                                                                      batch_id, num_batches, loss))
-                    # TODO: you probably want to plot something here
-                    writer.add_scalar('train/loss', loss, current_step)
-                    writer.add_scalar('train/accuracy',
-                                      train_acc[0][0], current_step)
-
-                if current_step % self._test_freq == 0:
-                    self._model.eval()
-                    val_accuracy, val_loss = self.validate()
-                    print("Epoch: {} has val accuracy {}".format(
-                        epoch, val_accuracy[0][0]))
-                    # TODO: you probably want to plot something here
-                    writer.add_scalar('validation/loss',
-                                      val_loss, current_step)
-                    writer.add_scalar('validation/accuracy',
-                                      val_accuracy[0][0], current_step)
+            if current_step % test_freq == 0:
+                val_seg_accuracy, val_depth_loss = validate()
+                print("Epoch: {} has val accuracy {}".format(
+                    epoch, val_accuracy[0][0]))
