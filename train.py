@@ -94,10 +94,18 @@ def train():
             depth_error = depth_error(depth_out, depth_gt)
 
             if current_step % log_freq == 0:
-                print("Epoch: {}, Batch {}/{} has loss {}".format(epoch,
-                                                                  batch_id, num_batches, loss))
+                print("Epoch: {}, Batch {}/{} has loss {}, seg_accuracy {}, adn depth error {}".format(epoch,
+                                                                                                       batch_id, num_batches, loss, seg_acc, depth_error))
+                writer.add_scalar('train/seg_accuracy',
+                                  seg_acc, current_step)
+                writer.add_scalar('train/depth_error',
+                                  depth_error, current_step)
 
             if current_step % test_freq == 0:
                 val_seg_accuracy, val_depth_loss = validate()
-                print("Epoch: {} has val accuracy {}".format(
-                    epoch, val_accuracy[0][0]))
+                print("Epoch: {} has val_seg accuracy {} and val_depth error {}".format(
+                    epoch, val_seg_accuracy, val_depth_loss))
+                writer.add_scalar('validation/seg_accuracy',
+                                  val_seg_accuracy, current_step)
+                writer.add_scalar('validation/depth_accuracy',
+                                  val_depth_loss, current_step)
