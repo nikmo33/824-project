@@ -38,11 +38,11 @@ class Decoder(nn.Module):
 	def __init__(self,num_classes):
 		super(Decoder, self).__init__()
 		self.num_classes = num_classes
-		self.seg_decoder = nn.Sequential(nn.Conv2d(256, 256, 1),
+		self.seg_decoder = nn.Sequential(nn.Conv2d(1280, 256, 1),
 										nn.BatchNorm2d(256),
 										nn.ReLU(),
 										nn.Conv2d(256, num_classes, 1))
-		self.depth_decoder = nn.Sequential(nn.Conv2d(256, 256, 1),
+		self.depth_decoder = nn.Sequential(nn.Conv2d(1280, 256, 1),
 										nn.BatchNorm2d(256),
 										nn.ReLU(),
 										nn.Conv2d(256, 1, 1))
@@ -54,16 +54,16 @@ class Decoder(nn.Module):
 	def forward(self, encoder_output):
 		seg_out = self.seg_decoder(encoder_output)
 		depth_out = self.depth_decoder(encoder_output)
-		
+
 		return seg_out, depth_out
 
 	def context_forward(self, encoder_output):
 		seg_out = self.seg_decoder(encoder_output)
 		depth_out = self.depth_decoder(encoder_output)
-		
+
 		context_out = torch.cat((depth_out, seg_out), dim = 1)
 		context_out = self.context_decoder(context_out)
-		
+
 		seg_out = context_out[:,:self.num_classes,:,:]
 		depth_out = context_out[:,-1:,:,:]
 
