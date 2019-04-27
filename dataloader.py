@@ -59,9 +59,3 @@ class ProjectDataset(Dataset):
 		file_name = 'CentralDepth_' + str(point_ID).zfill(5) +'.png'
 		file_path = os.path.join(self.root_dir,os.path.join(episode,file_name))
 		return Image.open(file_path)
-
-dataset = ProjectDataset('episodes/')
-img, seg, depth = dataset.__getitem__(0)
-print(img.shape)
-print(seg.shape)
-print(depth.shape)

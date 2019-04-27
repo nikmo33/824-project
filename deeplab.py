@@ -39,3 +39,5 @@ if __name__ == "__main__":
     output = model.forward(input)
     dec = Decoder(10)
     seg_out, depth_out = dec.forward(output)
+    print(seg_out.shape)
+    print(depth_out.shape)
