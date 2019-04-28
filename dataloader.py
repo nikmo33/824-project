@@ -39,12 +39,14 @@ class ProjectDataset(Dataset):
         return img, seg_GT, depth_GT
 
     def depth_to_array(self, image):
+        print(image.shape)
         img = np.array(image.permute((1, 2, 0)))
         # Apply (R + G * 256 + B * 256 * 256) / (256 * 256 * 256 - 1).
         normalized_depth = np.dot(img, [1.0, 256.0, 65536.0])
         normalized_depth /= 16777215.0  # (256.0 * 256.0 * 256.0 - 1.0)
-        normalized_depth *= 1000
-
+        normalized_depth *= 1000 * 255
+        print(normalized_depth.min())
+        print(normalized_depth.max())
         return normalized_depth
 
     def get_raw_img(self, episode, point_ID):
@@ -79,6 +81,8 @@ if __name__ == "__main__":
     for i_batch, sample_batched in enumerate(dataloader):
         img, seg_GT, depth_GT = sample_batched
         print(img.shape)
+        print(depth_GT.min())
+        print(depth_GT.max())
         print(seg_GT.shape)
         print(seg_GT.max())
         print(seg_GT.min())
