@@ -16,7 +16,7 @@ class MultiLossLayer(nn.Module):
             self.seg_loss(seg_out, seg_GT.long())
         depth_loss = (1 / (2 * torch.exp(self.depth_sigma))) * \
             self.depth_loss_fn(depth_out, depth_GT)
-        sigma_reg = self.seg_sigma + self.depth_sigma
+        sigma_reg = (self.seg_sigma + self.depth_sigma)/2
         # pdb.set_trace()
         final_loss = seg_loss + depth_loss + sigma_reg
 
@@ -24,9 +24,9 @@ class MultiLossLayer(nn.Module):
         writer.add_scalar("Loss/Depth", depth_loss, curr_step)
         writer.add_scalar("Loss/Reg", sigma_reg, curr_step)
         writer.add_scalar("Loss/Final", final_loss, curr_step)
-        writer.add_scalar("Uncertainty/Depth", self.depth_sigma, curr_step)
+        writer.add_scalar("Uncertainty/Depth", torch.exp(self.depth_sigma), curr_step)
         writer.add_scalar("Uncertainty/Segmentation",
-                          self.seg_sigma, curr_step)
+                          torch.exp(self.seg_sigma), curr_step)
 
         return final_loss
 
