@@ -70,13 +70,14 @@ if __name__ == "__main__":
     dataset = ProjectDataset(base_dir='episodes/')
 
     dataloader = DataLoader(
-        dataset, batch_size=100, shuffle=True, num_workers=10)
+        dataset, batch_size=1, shuffle=True, num_workers=10)
     # dataloader = DataLoader(vqa_dataset, batch_size=100)
     print(dataloader)
     # sample = vqa_dataset[1]
     # print(sample)
 
     for i_batch, sample_batched in enumerate(dataloader):
-        print(i_batch, (sample_batched[2]).shape)
+        print(i_batch, torch.max(
+            sample_batched[1]), torch.min(sample_batched[1]))
 
     # print(i, sample['image'].shape, sample['landmarks'].shape)
