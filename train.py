@@ -100,8 +100,11 @@ def depth_err(depth_out, depth_gt):
     # depth_gt = torch.where(depth_gt < 2., depth_gt, y)
     # # print(depth_gt)
     # # return 0
-    rms_val = torch.sum(torch.Tensor(
-        (depth_out.squeeze(1)-depth_gt)**2), dim=(1, 2))
+    diff = torch.Tensor(
+        (depth_out.squeeze(1)-depth_gt)**2)
+
+    diff = torch.where(depth_gt > 100, diff, torch.zeros(diff.shape))
+    rms_val = torch.sum(diff), dim=(1, 2))
     rms_val = rms_val**0.5
     error = rms_val.detach().numpy()/(depth_gt.shape[1]*depth_gt.shape[2])
     error = error.sum()/depth_gt.shape[0]
