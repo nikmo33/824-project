@@ -4,58 +4,79 @@ import os
 import torch
 from PIL import Image
 from torchvision import transforms
+
+
 class ProjectDataset(Dataset):
 
-	def __init__(self, base_dir):
-		self.root_dir = base_dir
-		self.episodes = [p for p in os.listdir(base_dir) if p.startswith('episode')]
-		self.num_episodes = len(self.episodes)
-		episode_len = []
-		for episode in self.episodes:
-			episode_dir = os.path.join(base_dir, episode)
-			episode_len.append(len(os.listdir(episode_dir))// 4)
+    def __init__(self, base_dir):
+        self.root_dir = base_dir
+        self.episodes = [p for p in os.listdir(
+            base_dir) if p.startswith('episode')]
+        self.num_episodes = len(self.episodes)
+        episode_len = []
+        for episode in self.episodes:
+            episode_dir = os.path.join(base_dir, episode)
+            episode_len.append(len(os.listdir(episode_dir)) // 4)
 
-		self.episode_len = episode_len
+        self.episode_len = episode_len
 
-		self.transform = transforms.Compose([transforms.CenterCrop(512),
-											transforms.ToTensor()])
+        self.transform = transforms.Compose([transforms.CenterCrop(512),
+                                             transforms.ToTensor()])
 
-	def __len__(self):
-		return sum(episode_len)
+    def __len__(self):
+        return sum(self.episode_len)
 
-	def __getitem__(self, idx):
-		episode_num = idx % self.num_episodes
-		episode = self.episodes[episode_num]
-		point_ID = idx % self.episode_len[episode_num]
-		img = self.transform(self.get_raw_img(episode, point_ID))
-		seg_GT = self.transform(self.get_segmentation_img(episode, point_ID))[2, :, :]
-		depth_img = self.transform(self.get_depth_img(episode, point_ID))
-		depth_GT = torch.Tensor(self.depth_to_array(depth_img))
+    def __getitem__(self, idx):
+        episode_num = idx % self.num_episodes
+        episode = self.episodes[episode_num]
+        point_ID = idx % self.episode_len[episode_num]
+        img = self.transform(self.get_raw_img(episode, point_ID))
+        seg_GT = self.transform(
+            self.get_segmentation_img(episode, point_ID))[2, :, :]
+        depth_img = self.transform(self.get_depth_img(episode, point_ID))
+        depth_GT = torch.Tensor(self.depth_to_array(depth_img))
 
-		return img, seg_GT, depth_GT
+        return img, seg_GT, depth_GT
+
+    def depth_to_array(self, image):
+        img = np.array(image.permute((1, 2, 0)))
+        # Apply (R + G * 256 + B * 256 * 256) / (256 * 256 * 256 - 1).
+        normalized_depth = np.dot(img, [1.0, 256.0, 65536.0])
+        normalized_depth /= 16777215.0  # (256.0 * 256.0 * 256.0 - 1.0)
+        normalized_depth *= 1000
+
+        return normalized_depth
+
+    def get_raw_img(self, episode, point_ID):
+        file_name = 'CentralRGB_' + str(point_ID).zfill(5) + '.png'
+        file_path = os.path.join(
+            self.root_dir, os.path.join(episode, file_name))
+        return Image.open(file_path)
+
+    def get_segmentation_img(self, episode, point_ID):
+        file_name = 'CentralSemanticSeg_' + str(point_ID).zfill(5) + '.png'
+        file_path = os.path.join(
+            self.root_dir, os.path.join(episode, file_name))
+        return Image.open(file_path)
+
+    def get_depth_img(self, episode, point_ID):
+        file_name = 'CentralDepth_' + str(point_ID).zfill(5) + '.png'
+        file_path = os.path.join(
+            self.root_dir, os.path.join(episode, file_name))
+        return Image.open(file_path)
 
 
-	def depth_to_array(self, image):
-		img = np.array(image.permute((1, 2, 0)))
-		# Apply (R + G * 256 + B * 256 * 256) / (256 * 256 * 256 - 1).
-		normalized_depth = np.dot(img, [1.0, 256.0, 65536.0])
-		normalized_depth /= 16777215.0  # (256.0 * 256.0 * 256.0 - 1.0)
-		normalized_depth *= 1000
+if __name__ == "__main__":
+    dataset = ProjectDataset(base_dir='episodes/')
 
-		return normalized_depth
+    dataloader = DataLoader(
+        dataset, batch_size=100, shuffle=True, num_workers=10)
+    # dataloader = DataLoader(vqa_dataset, batch_size=100)
+    print(dataloader)
+    # sample = vqa_dataset[1]
+    # print(sample)
 
+    for i_batch, sample_batched in enumerate(dataloader):
+        print(i_batch, (sample_batched[2]).shape)
 
-	def get_raw_img(self, episode, point_ID):
-		file_name = 'CentralRGB_' + str(point_ID).zfill(5) +'.png'
-		file_path = os.path.join(self.root_dir,os.path.join(episode,file_name))
-		return Image.open(file_path)
-
-	def get_segmentation_img(self, episode, point_ID):
-		file_name = 'CentralSemanticSeg_' + str(point_ID).zfill(5) +'.png'
-		file_path = os.path.join(self.root_dir,os.path.join(episode,file_name))
-		return Image.open(file_path)
-
-	def get_depth_img(self, episode, point_ID):
-		file_name = 'CentralDepth_' + str(point_ID).zfill(5) +'.png'
-		file_path = os.path.join(self.root_dir,os.path.join(episode,file_name))
-		return Image.open(file_path)
+    # print(i, sample['image'].shape, sample['landmarks'].shape)
