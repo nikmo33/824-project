@@ -9,8 +9,8 @@ import pdb
 from Loss import Decoder
 
 
-num_epochs = 1
-log_freq = 2  # Steps
+num_epochs = 10
+log_freq = 100  # Steps
 test_freq = 1000  # Steps
 
 loss_func = MultiLossLayer()
@@ -20,7 +20,7 @@ dec_model = Decoder(13)
 dataset = dataloader.ProjectDataset(base_dir='episodes/')
 
 train_dataloader = DataLoader(
-    dataset, batch_size=2, shuffle=True, num_workers=10)
+    dataset, batch_size=16, shuffle=True, num_workers=10)
 
 # train_dataset_loader = DataLoader(
 #     train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_data_loader_workers)
@@ -33,8 +33,9 @@ train_dataloader = DataLoader(
 cuda = torch.cuda.is_available()
 
 if cuda:
-    model = model.cuda()
-
+    enc_model = enc_model.cuda()
+    dec_model = dec_model.cuda()
+    loss_func = loss_func.cuda()
 optimizer = torch.optim.SGD([
     {'params': enc_model.parameters(), 'lr': 25e-5},
     {'params': dec_model.parameters(), 'lr': 25e-5},
@@ -125,16 +126,20 @@ def train():
             current_step = epoch * num_batches + batch_id
 
             # ============
-            image_data = batch_data[0]  # .cuda()
+            image_data = batch_data[0].cuda()
             output = enc_model(image_data)
+            output = output.cuda()
             segmented_out, depth_out = dec_model.forward(output)
-            segmented_gt = batch_data[1]  # .cuda()
-            depth_gt = batch_data[2]  # .cuda()
+            segmented_out = segmented_out.cuda()
+            depth_out = depth_out.cuda()
+            segmented_gt = batch_data[1].cuda()
+            depth_gt = batch_data[2].cuda()
             # ============
             # pdb.set_trace()
             loss = loss_func(segmented_out, depth_out,
                              segmented_gt, depth_gt, writer, current_step)
             print(loss)
+            loss = loss.cuda()
             # break
             optimizer.zero_grad()
             loss.backward()
