@@ -17,7 +17,7 @@ class MultiLossLayer(nn.Module):
         depth_loss = (1 / (2 * torch.exp(self.depth_sigma))) * \
             self.depth_loss_fn(depth_out, depth_GT)
         sigma_reg = self.seg_sigma + self.depth_sigma
-        #pdb.set_trace()
+        # pdb.set_trace()
         final_loss = seg_loss + depth_loss + sigma_reg
 
         writer.add_scalar("Loss/Segmentation", seg_loss, curr_step)
@@ -34,7 +34,7 @@ class MultiLossLayer(nn.Module):
         pred = 1 / depth_out
         GT = 1 / depth_GT
         cum_loss = torch.mean(torch.abs(pred - GT))
-        loss =  cum_loss #cum_loss.mean()
+        loss = cum_loss  # cum_loss.mean()
 
         return loss
 

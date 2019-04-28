@@ -69,22 +69,16 @@ if __name__ == "__main__":
     dataset = ProjectDataset(base_dir='episodes/')
 
     dataloader = DataLoader(
-<<<<<<< HEAD
-        dataset, batch_size=1, shuffle=True, num_workers=10)
-=======
         dataset, batch_size=1, shuffle=True, num_workers=1)
->>>>>>> 7aff9dbb1b60b0f8cf9743f8c74395e6e948b4fe
     # dataloader = DataLoader(vqa_dataset, batch_size=100)
     print(dataloader)
     # sample = vqa_dataset[1]
     # print(sample)
 
     for i_batch, sample_batched in enumerate(dataloader):
-<<<<<<< HEAD
         print(i_batch, torch.max(
             sample_batched[1]), torch.min(sample_batched[1]))
 
-=======
         img, seg_GT, depth_GT = sample_batched
         print(img.shape)
         print(depth_GT.min())
@@ -95,5 +89,4 @@ if __name__ == "__main__":
         print(depth_GT.shape)
         if(i_batch == 10):
             break
->>>>>>> 7aff9dbb1b60b0f8cf9743f8c74395e6e948b4fe
     # print(i, sample['image'].shape, sample['landmarks'].shape)

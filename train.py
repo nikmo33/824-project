@@ -67,7 +67,7 @@ def validate():
 
 
 def segmentation_acc(segmented_out, segmented_gt):
-    print(torch.max(segmented_gt), torch.min(segmented_gt))
+    # print(torch.max(segmented_gt), torch.min(segmented_gt))
     # print(segmented_out, segmented_out.shape)
     # print(segmented_gt.shape)
     _, indices = torch.max(torch.Tensor(segmented_out), 1)
@@ -91,14 +91,14 @@ def depth_err(depth_out, depth_gt):
     # print()
     # x = torch.randn(3, 2)
 
-    y = torch.zeros(512, 512)
-    # # x
-    # # tensor([[-0.4620,  0.3139],
-    # #     [0.3898, -0.7197],
-    # #     [0.0478, -0.1657]])
-    depth_gt = torch.where(depth_gt < 2., depth_gt, y)
-    # print(depth_gt)
-    # return 0
+    # y = torch.zeros(512, 512)
+    # # # x
+    # # # tensor([[-0.4620,  0.3139],
+    # # #     [0.3898, -0.7197],
+    # # #     [0.0478, -0.1657]])
+    # depth_gt = torch.where(depth_gt < 2., depth_gt, y)
+    # # print(depth_gt)
+    # # return 0
     rms_val = torch.sum(torch.Tensor(
         (depth_out.squeeze(1)-depth_gt)**2), dim=(1, 2))
     rms_val = rms_val**0.5
