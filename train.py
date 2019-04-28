@@ -36,8 +36,8 @@ if cuda:
     model = model.cuda()
 
 optimizer = torch.optim.SGD([
-    {'params': enc_model.parameters(), 'lr': 1e-2},
-    {'params': dec_model.parameters(), 'lr': 1e-2},
+    {'params': enc_model.parameters(), 'lr': 25e-5},
+    {'params': dec_model.parameters(), 'lr': 25e-5},
     {'params': loss_func.seg_sigma,
         'lr': 1e-2}, {'params': loss_func.depth_sigma, 'lr': 1e-2}
 ], lr=2.5e-4, momentum=0.9, weight_decay=1e-4)
@@ -85,8 +85,8 @@ def segmentation_acc(segmented_out, segmented_gt):
 
 
 def depth_err(depth_out, depth_gt):
-    # print(depth_out.shape)
-    # print(depth_gt.shape)
+    print(depth_out.shape)
+    print(depth_gt.shape)
     # print(depth_gt)
     # print()
     # x = torch.randn(3, 2)
