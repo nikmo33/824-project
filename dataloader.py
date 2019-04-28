@@ -32,7 +32,7 @@ class ProjectDataset(Dataset):
         point_ID = idx % self.episode_len[episode_num]
         img = self.transform(self.get_raw_img(episode, point_ID))
         seg_GT = self.transform(
-            self.get_segmentation_img(episode, point_ID))[2, :, :]
+            self.get_segmentation_img(episode, point_ID))[0, :, :]*255
         depth_img = self.transform(self.get_depth_img(episode, point_ID))
         depth_GT = torch.Tensor(self.depth_to_array(depth_img))
 
@@ -70,13 +70,18 @@ if __name__ == "__main__":
     dataset = ProjectDataset(base_dir='episodes/')
 
     dataloader = DataLoader(
-        dataset, batch_size=100, shuffle=True, num_workers=10)
+        dataset, batch_size=1, shuffle=True, num_workers=1)
     # dataloader = DataLoader(vqa_dataset, batch_size=100)
     print(dataloader)
     # sample = vqa_dataset[1]
     # print(sample)
 
     for i_batch, sample_batched in enumerate(dataloader):
-        print(i_batch, (sample_batched[2]).shape)
-
+        img, seg_GT, depth_GT = sample_batched
+        print(img.shape)
+        print(seg_GT.shape)
+        print(seg_GT.max())
+        print(seg_GT.min())
+        print(depth_GT.shape)
+        break
     # print(i, sample['image'].shape, sample['landmarks'].shape)
